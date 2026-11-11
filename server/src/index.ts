@@ -54,6 +54,8 @@ app.get('/ws', { websocket: true }, (socket) => {
 
 app.register(async (admin) => {
   admin.addHook('onRequest', async (req, reply) => {
+    // On a public server the admin API stays locked until a real ADMIN_TOKEN is set.
+    if (process.env.NODE_ENV === 'production' && cfg.adminToken === 'change-me') return reply.code(401).send({ error: 'set ADMIN_TOKEN to use the admin API' });
     if (req.headers['x-admin-token'] !== cfg.adminToken) return reply.code(401).send({ error: 'unauthorized' });
     if (!game) return reply.code(503).send({ error: 'starting' });
   });
