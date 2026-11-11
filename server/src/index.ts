@@ -39,6 +39,8 @@ const broadcast = (e: ServerEvent) => {
 // ---------- public ----------
 
 app.get('/api/health', async () => ({ ok: true, state, mode: cfg.mode, round: game?.publicState().round ?? null }));
+// How recent hand-overs between servers went. No secrets, just timings.
+app.get('/api/handover', async () => leader.journal(30));
 app.get('/api/state', async (_req, reply) => (game ? game.publicState() : reply.code(503).header('retry-after', '1').send({ error: 'starting' })));
 app.get('/api/rounds', async () => db?.history(25) ?? []);
 
@@ -104,19 +106,21 @@ if (fs.existsSync(path.join(cfg.staticDir, 'index.html'))) {
   log(`serving the site from ${cfg.staticDir}`);
 }
 
+const dbFile = cfg.mode === 'dry' ? cfg.dbPath.replace(/\.sqlite$/, '.dry.sqlite') : cfg.dbPath;
+const leader = new Leader(path.join(path.dirname(dbFile), 'leader.lock'));
+leader.note('started', { pid: process.pid });
+
 await app.listen({ port: cfg.port, host: '0.0.0.0' });
 log(`listening on port ${cfg.port} (standby)`);
 
 // ---------- take over ----------
-
-const dbFile = cfg.mode === 'dry' ? cfg.dbPath.replace(/\.sqlite$/, '.dry.sqlite') : cfg.dbPath;
-const leader = new Leader(path.join(path.dirname(dbFile), 'leader.lock'));
 
 async function shutdown(why: string, code = 0) {
   if (state === 'stopping') return;
   const wasActive = state === 'active';
   state = 'stopping';
   log(`stopping (${why})`);
+  leader.note('stopping', { why, wasActive });
   // Stop everything that could start new work, in one go, before anything is awaited.
   stopLive?.();
   sim?.stop();

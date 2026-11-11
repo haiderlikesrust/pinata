@@ -5,6 +5,7 @@
 // the old one lets go of the lock file (or stops refreshing it).
 
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 
@@ -12,6 +13,8 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export class Leader {
   private readonly id = randomUUID();
+  /** Short name for this process in the journal (the container id under Docker). */
+  private readonly who = os.hostname().slice(0, 12);
   private timer: NodeJS.Timeout | null = null;
   private held = false;
 
@@ -21,6 +24,34 @@ export class Leader {
     private readonly staleMs = 8000,
   ) {
     fs.mkdirSync(path.dirname(file), { recursive: true });
+  }
+
+  /**
+   * Appends one line to a small journal next to the lock. Every container on the
+   * volume writes to it, so it shows exactly how each hand-over went.
+   */
+  note(event: string, extra: Record<string, unknown> = {}) {
+    try {
+      const file = `${this.file}.journal`;
+      fs.appendFileSync(file, `${JSON.stringify({ t: new Date().toISOString(), who: this.who, event, ...extra })}\n`);
+      const lines = fs.readFileSync(file, 'utf8').trim().split('\n');
+      if (lines.length > 200) fs.writeFileSync(file, `${lines.slice(-100).join('\n')}\n`);
+    } catch {
+      /* the journal is only a diagnostic */
+    }
+  }
+
+  journal(last = 20): unknown[] {
+    try {
+      return fs
+        .readFileSync(`${this.file}.journal`, 'utf8')
+        .trim()
+        .split('\n')
+        .slice(-last)
+        .map((l) => JSON.parse(l) as unknown);
+    } catch {
+      return [];
+    }
   }
 
   private read(): { id: string; at: number } | null {
@@ -46,16 +77,23 @@ export class Leader {
 
   /** Resolves once this process owns the lock. `cancelled` lets a stopping process give up. */
   async acquire(onWait: () => void, cancelled: () => boolean): Promise<boolean> {
+    const started = Date.now();
+    const first = this.read();
     let told = false;
     while (!this.tryTake()) {
       if (cancelled()) return false;
       if (!told) {
         told = true;
+        this.note('standby', { lockAgeMs: first ? started - first.at : null });
         onWait();
       }
       await sleep(250);
     }
     this.held = true;
+    // "handed over" = the previous server released the lock; "expired" = it just stopped refreshing it.
+    const how = !first ? 'free' : !told ? 'stale at start' : fs.existsSync(`${this.file}.released`) ? 'handed over' : 'expired';
+    this.note('active', { waitedMs: Date.now() - started, how });
+    fs.rmSync(`${this.file}.released`, { force: true });
     return true;
   }
 
@@ -83,7 +121,9 @@ export class Leader {
     if (!this.held) return;
     this.held = false;
     try {
+      fs.writeFileSync(`${this.file}.released`, String(Date.now()));
       if (this.read()?.id === this.id) fs.unlinkSync(this.file);
+      this.note('released');
     } catch {
       /* already gone */
     }
