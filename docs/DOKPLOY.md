@@ -50,6 +50,7 @@ Payouts are safe across the hand-over. Every transaction is saved, signed, befor
      { "Test": ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then(r => process.exit(r.ok ? 0 : 1), () => process.exit(1))"], "Interval": 5000000000, "Timeout": 3000000000, "StartPeriod": 40000000000, "Retries": 3 }
      ```
    - Durations in these fields are in nanoseconds (5000000000 = 5 s).
+   - Newer Dokploy versions show these as a form instead of JSON (**Swarm Settings → Health Check / Update Config**). Enter the same values: the test as two commands (`CMD-SHELL`, then the `node -e "…"` line), failure action **Rollback**, order **Start First**.
 5. **Data volume.** In **Advanced → Volumes**, add a **Volume Mount** with volume name `pinata-data` and mount path `/app/data`. Without it every deploy would start from an empty database, and the old and new servers could not hand over.
 6. **Deploy.** Click **Deploy** and follow the build log. Then open `https://thepinata.fun/api/health`. It should show `"ok": true`, `"state": "active"` and `"mode": "dry"`.
 7. **Optional:** turn on **Autodeploy** so every push to `main` deploys the same way.
@@ -63,6 +64,10 @@ while true; do curl -s -o /dev/null -w '%{http_code} %{time_total}s\n' https://t
 ```
 
 The new container's log shows `standby: waiting for the running server to hand over`, then `active`.
+
+`https://thepinata.fun/api/handover` shows how each recent hand-over went. A healthy one reads: the new server `started` and went `standby`, a few seconds later the old one logged `stopping` and `released`, and the new one went `active` with `"how": "handed over"` within about a tenth of a second. `"how": "expired"` means the old server died without letting go and the new one took over after 8 seconds.
+
+Measured on the live site: 110 of 110 requests to `/api/state` returned 200 across a redeploy, and the hand-over took about 60 ms.
 
 ## Go live
 
