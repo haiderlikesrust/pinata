@@ -1,0 +1,21 @@
+{
+  "name": "pinata",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "shared",
+    "server",
+    "web"
+  ],
+  "scripts": {
+    "dev": "concurrently -n server,web -c magenta,cyan \"npm run dev -w server\" \"npm run dev -w web\"",
+    "test": "npm test -w server",
+    "build": "npm run build -w web",
+    "start": "npm start -w server",
+    "probe": "npm run probe -w server --"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0",
+    "typescript": "^5.7.2"
+  }
+}

@@ -1,0 +1,13 @@
+node_modules/
+dist/
+data/
+.env
+.env.*
+!.env.example
+*.sqlite
+*.sqlite-*
+*.keyfile
+.DS_Store
+
+# large source asset; the optimised model in web/public is what ships
+assets-src/pinata-raw.glb
