@@ -20,7 +20,7 @@ const opt = z
 const schema = z.object({
   MODE: z.enum(['dry', 'live']).default('dry'),
   PORT: num(8787),
-  ADMIN_TOKEN: z.string().default('change-me'),
+  ADMIN_TOKEN: opt,
   DB_PATH: z.string().default(path.join(root, 'data', 'pinata.sqlite')),
 
   MINT: opt,
@@ -83,7 +83,8 @@ export function parseConfig(env: Record<string, string | undefined> = process.en
     root,
     mode: e.MODE,
     port: e.PORT,
-    adminToken: e.ADMIN_TOKEN,
+    // Empty counts as not set, so a blank value can never unlock the admin API.
+    adminToken: e.ADMIN_TOKEN ?? 'change-me',
     dbPath: e.DB_PATH,
     mint: e.MINT,
     symbol: e.TOKEN_SYMBOL,
