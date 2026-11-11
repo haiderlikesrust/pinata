@@ -41,8 +41,21 @@ const broadcast = (e: ServerEvent) => {
 app.get('/api/health', async () => ({ ok: true, state, mode: cfg.mode, round: game?.publicState().round ?? null }));
 // How recent hand-overs between servers went. No secrets, just timings.
 app.get('/api/handover', async () => leader.journal(30));
-app.get('/api/state', async (_req, reply) => (game ? game.publicState() : reply.code(503).header('retry-after', '1').send({ error: 'starting' })));
-app.get('/api/rounds', async () => db?.history(25) ?? []);
+/**
+ * During an update a request can land on the new server a few seconds before it
+ * takes over. Rather than fail, it waits here until this server is running the game.
+ */
+async function whenActive(maxMs = 15_000): Promise<Game | null> {
+  const until = Date.now() + maxMs;
+  while (!game && state !== 'stopping' && Date.now() < until) await sleep(100);
+  return game;
+}
+
+app.get('/api/state', async (_req, reply) => {
+  const g = await whenActive();
+  return g ? g.publicState() : reply.code(503).header('retry-after', '1').send({ error: 'starting' });
+});
+app.get('/api/rounds', async () => ((await whenActive()) ? (db?.history(25) ?? []) : []));
 
 app.get('/ws', { websocket: true }, (socket) => {
   clients.add(socket);
