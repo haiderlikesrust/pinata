@@ -76,6 +76,30 @@ export class LiveChain implements Chain {
     return this.o.treasury.publicKey;
   }
 
+  /**
+   * The token program the fee sweeps must be told about. pump.fun's SDK assumes the
+   * classic SPL Token program unless told otherwise, which is wrong for a Token-2022
+   * quote such as $PUMP: the sweep then fails with AccountNotInitialized and no fees move.
+   */
+  private get sweepProgram(): PublicKey | undefined {
+    return this.quoteIsSol ? undefined : this.quoteProgram;
+  }
+
+  /**
+   * Builds, signs and dry-runs one of our own transactions. If the dry run fails it
+   * throws with the program's own error, so a transaction that can never land is
+   * reported in seconds instead of being retried until its blockhash expires.
+   */
+  private async own(label: string, ixs: TransactionInstruction[], signers: Keypair[]): Promise<Prepared> {
+    const tx = await build(this.o.conn, this.me, ixs, signers, this.o.priorityMicroLamports);
+    const sim = await this.o.conn.simulateTransaction(tx, { sigVerify: false, commitment: 'confirmed' });
+    if (sim.value.err) {
+      const why = (sim.value.logs ?? []).filter((l) => /Error|failed|insufficient/i.test(l)).slice(-2).join(' | ') || JSON.stringify(sim.value.err);
+      throw new Error(`${label} would fail on chain: ${why.slice(0, 400)}`);
+    }
+    return asPrepared(tx);
+  }
+
   /** The coin's PumpSwap pool address (only exists once the coin has graduated). */
   private get pool() {
     return canonicalPumpPoolPda(this.o.mint, this.quoteIsSol ? undefined : this.quote);
@@ -263,11 +287,11 @@ export class LiveChain implements Chain {
         const ixs: TransactionInstruction[] = [];
         const curve = await this.pump.fetchBondingCurve(mint).catch(() => null);
         // Fees first have to be swept out of the curve and the pool into the creator vaults.
-        if (curve) ixs.push(await PUMP_SDK.sweepCreatorFeeInstruction({ payer: this.me, mint, creator: curve.creator, quoteMint: curve.quoteMint }));
+        if (curve) ixs.push(await PUMP_SDK.sweepCreatorFeeInstruction({ payer: this.me, mint, creator: curve.creator, quoteMint: curve.quoteMint, quoteTokenProgram: this.sweepProgram }));
         const poolInfo = await conn.getAccountInfo(this.pool, 'confirmed');
         if (poolInfo) {
           const pool = PUMP_AMM_SDK.decodePool(poolInfo);
-          ixs.push(await PUMP_SDK.sweepPoolCreatorFeeInstruction({ payer: this.me, mint, coinCreator: pool.coinCreator, quoteMint: pool.quoteMint }));
+          ixs.push(await PUMP_SDK.sweepPoolCreatorFeeInstruction({ payer: this.me, mint, coinCreator: pool.coinCreator, quoteMint: pool.quoteMint, quoteTokenProgram: this.sweepProgram }));
         }
         ixs.push(
           ...(this.quoteIsSol
@@ -275,7 +299,7 @@ export class LiveChain implements Chain {
             : await this.pump.collectCoinCreatorFeeV2Instructions(this.me, this.quote, this.quoteProgram, this.me)),
         );
         this.estimateCache.at = 0;
-        return asPrepared(await build(conn, this.me, ixs, [treasury], fee));
+        return this.own('fee claim', ixs, [treasury]);
       }
       case 'swapFees': {
         const held = await this.feesHeld();
@@ -288,7 +312,7 @@ export class LiveChain implements Chain {
       case 'fundPack': {
         const pack = new PublicKey(a.packWallet);
         const ixs = [...this.transferIxs(USDC_MINT, TOKEN_PROGRAM_ID, 6, this.me, pack, a.usdc, this.me), SystemProgram.transfer({ fromPubkey: this.me, toPubkey: pack, lamports: a.lamports })];
-        return asPrepared(await build(conn, this.me, ixs, [treasury], fee));
+        return this.own('pack wallet funding', ixs, [treasury]);
       }
       case 'pack': {
         this.assertWinner(round, a.to);
@@ -318,11 +342,11 @@ export class LiveChain implements Chain {
       }
       case 'sendUsdc': {
         this.assertWinner(round, a.to);
-        return asPrepared(await build(conn, this.me, this.transferIxs(USDC_MINT, TOKEN_PROGRAM_ID, 6, this.me, new PublicKey(a.to), a.amount, this.me), [treasury], fee));
+        return this.own('USDC transfer', this.transferIxs(USDC_MINT, TOKEN_PROGRAM_ID, 6, this.me, new PublicKey(a.to), a.amount, this.me), [treasury]);
       }
       case 'sendToken': {
         this.assertWinner(round, a.to);
-        return asPrepared(await build(conn, this.me, this.transferIxs(mint, this.tokenProgram, this.tokenDecimals, this.me, new PublicKey(a.to), a.amount, this.me), [treasury], fee));
+        return this.own('token transfer', this.transferIxs(mint, this.tokenProgram, this.tokenDecimals, this.me, new PublicKey(a.to), a.amount, this.me), [treasury]);
       }
     }
     throw new Error(`unknown step ${kind}`);

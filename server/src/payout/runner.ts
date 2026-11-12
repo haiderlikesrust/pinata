@@ -215,7 +215,8 @@ export async function runPayout(d: RunnerDeps, roundId: number): Promise<RoundSu
     summary.potUsd = Number(pot.usdc) / MICRO;
     publish();
     if (pot.usdc <= 0n) {
-      summary.status = 'paid';
+      // An empty pot is only "paid" if nothing went wrong on the way to finding it empty.
+      summary.status = attention ? 'attention' : 'paid';
       publish();
       return summary;
     }
