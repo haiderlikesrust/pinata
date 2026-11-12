@@ -108,7 +108,7 @@ MIN_CLAIM_USD=0.01
 - **Make each buy about $3.** Three take HP to 1, the fourth breaks it. A sell heals half its size.
 - **Seed the pool.** Fees from a few small buys are worth cents. Send USDC to the prize wallet and it counts as the pool: $100 buys one $25 pack, $20 tests everything except the pack.
 - **Watch it** at `/admin/status` and in the container log, then check each `tx` link on the winners screen.
-- **Afterwards** put the real values back, and change `MINT` to the real coin. The piñata that is already open keeps the HP it started with; new settings apply from the next one.
+- **Afterwards** put the real values back and change `MINT` to the real coin. Each coin has its own database, so the real coin starts at round 1 with an empty history and none of the test rounds or test trades. The test coin's database stays on the volume (it holds that coin's pack-wallet keys) and comes back if you ever set `MINT` to the test coin again.
 
 ### Deploying
 

@@ -153,7 +153,10 @@ if (fs.existsSync(path.join(cfg.staticDir, 'index.html'))) {
   log(`serving the site from ${cfg.staticDir}`);
 }
 
-const dbFile = cfg.mode === 'dry' ? cfg.dbPath.replace(/\.sqlite$/, '.dry.sqlite') : cfg.dbPath;
+// One database per coin (and one for demo mode). Changing MINT, for example from a test coin
+// to the real one, starts from a clean round 1 with no history. The old coin's file is kept,
+// because it still holds the keys of that coin's pack wallets.
+const dbFile = cfg.dbPath.replace(/\.sqlite$/, cfg.mode === 'dry' ? '.dry.sqlite' : `.${cfg.mint!.replace(/[^A-Za-z0-9]/g, '').slice(0, 12)}.sqlite`);
 const leader = new Leader(path.join(path.dirname(dbFile), 'leader.lock'));
 leader.note('started', { pid: process.pid });
 
