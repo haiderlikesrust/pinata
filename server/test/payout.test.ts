@@ -5,7 +5,7 @@ import { newHp } from '../src/engine/pinata';
 import { MemChain } from '../src/payout/memChain';
 import { runPayout, type PayoutCfg } from '../src/payout/runner';
 
-/** Price of the fee token ($CARDS) in the tests. */
+/** Price of the fee token ($PUMP) in the tests. */
 const FEE_USD = 0.2;
 const cfg: PayoutCfg = {
   split: { packs: 25, buyback: 25, usdc: 50 },
@@ -27,7 +27,7 @@ let roundId: number;
 function setup(potUsd: number) {
   db = new Db(':memory:');
   chain = new MemChain(() => FEE_USD);
-  chain.accrueUsd(potUsd); // creator fees waiting to be claimed, in $CARDS
+  chain.accrueUsd(potUsd); // creator fees waiting to be claimed, in $PUMP
   const round = db.createRound(newHp(1000, 1));
   roundId = round.id;
   const buys: [string, number][] = [

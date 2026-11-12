@@ -61,7 +61,7 @@ const schema = z.object({
   PRIORITY_MICROLAMPORTS: num(100000),
   LEDGER_POLL_MS: num(2500),
 
-  SIM_QUOTE_USD: num(0.2),
+  SIM_QUOTE_USD: num(0.0034),
   SIM_START_POT_USD: num(400),
   SIM_FEE_RATE: num(0.01),
   SIM_TRADES_PER_MIN: num(45),
@@ -90,7 +90,7 @@ export function parseConfig(env: Record<string, string | undefined> = process.en
     symbol: e.TOKEN_SYMBOL,
     xUrl: normaliseX(e.X_URL),
     quoteMint: e.QUOTE_MINT,
-    quoteSymbol: e.QUOTE_SYMBOL ?? (e.QUOTE_MINT ? 'CARDS' : e.MODE === 'dry' ? 'CARDS' : 'SOL'),
+    quoteSymbol: e.QUOTE_SYMBOL ?? (e.QUOTE_MINT ? 'PUMP' : e.MODE === 'dry' ? 'PUMP' : 'SOL'),
     staticDir: e.STATIC_DIR,
     rpcUrl: e.RPC_URL,
     pumpPortalKey: e.PUMPPORTAL_API_KEY,

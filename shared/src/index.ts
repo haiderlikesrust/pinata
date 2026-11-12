@@ -91,7 +91,7 @@ export interface PublicState {
   armored: boolean;
   /** The prize pool in USD: USDC in the prize wallet plus creator fees not converted yet. */
   potUsd: number;
-  /** What creator fees arrive in before they are swapped to USDC, e.g. CARDS. */
+  /** What creator fees arrive in before they are swapped to USDC, e.g. PUMP. */
   feeSymbol: string;
   startedAt: number;
   nextRoundAt: number | null;

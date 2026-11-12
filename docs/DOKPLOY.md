@@ -71,8 +71,8 @@ Measured on the live site: 110 of 110 requests to `/api/state` returned 200 acro
 
 ## Go live
 
-1. Launch the coin from a fresh wallet. Set `MINT`, `X_URL`, `QUOTE_MINT` (for a coin quoted in $CARDS), `RPC_URL`, `JUPITER_API_KEY`, `TREASURY_SECRET_KEY`, and optionally `PUMPPORTAL_API_KEY`.
-2. Send the prize wallet about 0.2 SOL. Fees arrive in $CARDS and the pool is USDC, so nothing tops up SOL for you: it only pays network fees, and payouts stall if it runs out.
+1. Launch the coin from a fresh wallet. Set `MINT`, `X_URL`, `QUOTE_MINT` (for a coin quoted in $PUMP), `RPC_URL`, `JUPITER_API_KEY`, `TREASURY_SECRET_KEY`, and optionally `PUMPPORTAL_API_KEY`.
+2. Send the prize wallet about 0.2 SOL. Fees arrive in $PUMP and the pool is USDC, so nothing tops up SOL for you: it only pays network fees, and payouts stall if it runs out.
 3. Set `MODE=live` and redeploy. Keep `MAX_HP_USD` low and `MIN_POT_USD` around 60 for the first round, and watch the application's log.
 4. The rest of the launch checklist is in the [README](../README.md#going-live).
 

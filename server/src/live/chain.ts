@@ -1,7 +1,7 @@
 // Mainnet implementation of the Chain interface: creator-fee claims, Jupiter
 // swaps, token transfers and Collector Crypt packs.
 //
-// Money model: creator fees arrive in the coin's quote asset ($CARDS, or SOL for
+// Money model: creator fees arrive in the coin's quote asset ($PUMP, or SOL for
 // a plain SOL coin). Before each payout they are claimed and swapped into USDC.
 // The prize pool is simply the USDC in the treasury, so USDC anyone sends there
 // counts. SOL in the treasury is only ever used for network fees.

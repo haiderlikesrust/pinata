@@ -3,7 +3,7 @@
 //
 //   npm run probe:latency -w server -- <mint> [seconds]
 //
-// Needs RPC_URL in .env (or in the environment). Set QUOTE_MINT for a coin quoted in $CARDS.
+// Needs RPC_URL in .env (or in the environment). Set QUOTE_MINT for a coin quoted in $PUMP.
 
 import { config as loadEnv } from 'dotenv';
 import path from 'node:path';

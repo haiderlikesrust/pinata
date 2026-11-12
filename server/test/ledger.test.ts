@@ -58,19 +58,19 @@ describe('parseTrade', () => {
     expect(t!.quote).toBeCloseTo(1.5);
   });
 
-  it('reads a buy on a coin quoted in another token ($CARDS)', () => {
-    const CARDS = Keypair.generate().publicKey.toBase58();
+  it('reads a buy on a coin quoted in another token ($PUMP)', () => {
+    const PUMP_TOKEN = Keypair.generate().publicKey.toBase58();
     const t = parseTrade(
       tx({
         keys: [user, venue],
         preSol: [1, 0.002],
         postSol: [0.999, 0.002],
-        pre: [bal(venue, mint, 5000), bal(venue, CARDS, 1000), bal(user, CARDS, 400)],
-        post: [bal(venue, mint, 4000), bal(venue, CARDS, 1250), bal(user, CARDS, 150), bal(user, mint, 1000)],
+        pre: [bal(venue, mint, 5000), bal(venue, PUMP_TOKEN, 1000), bal(user, PUMP_TOKEN, 400)],
+        post: [bal(venue, mint, 4000), bal(venue, PUMP_TOKEN, 1250), bal(user, PUMP_TOKEN, 150), bal(user, mint, 1000)],
       }),
       'sig',
       mint,
-      CARDS,
+      PUMP_TOKEN,
     );
     expect(t).toMatchObject({ wallet: user, side: 'buy', tokens: 1000 });
     expect(t!.quote).toBeCloseTo(250);

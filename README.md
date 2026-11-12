@@ -2,7 +2,7 @@
 
 Every buy of the coin hits a 3D piñata. Every sell patches it up. When it breaks, the prize pool is paid out to five buyers as Collector Crypt card packs, bought-back supply of the coin, and USDC.
 
-**The prize pool is USDC.** The coin's pump.fun creator fees arrive in $CARDS (or SOL for a plain SOL coin) and are swapped into USDC before each payout. Any USDC sent to the prize wallet counts toward the pool as well. Then a new piñata drops in.
+**The prize pool is USDC.** The coin's pump.fun creator fees arrive in $PUMP (or SOL for a plain SOL coin) and are swapped into USDC before each payout. Any USDC sent to the prize wallet counts toward the pool as well. Then a new piñata drops in.
 
 ## Run it (demo mode)
 
@@ -78,8 +78,8 @@ A break is only declared once the breaking trade is finalized on chain. Packs ar
    npm run probe:latency -w server -- <mint> 30
    ```
    It should print trades picked up about a second after their block. If nothing arrives on a busy coin, the RPC plan may not include websocket subscriptions; the site still works, with hits a few seconds late.
-4. Fill in `.env`: `MODE=live`, `MINT`, `TOKEN_SYMBOL`, `QUOTE_MINT` (the $CARDS mint, if the coin is quoted in $CARDS), `RPC_URL`, `JUPITER_API_KEY`, `PUMPPORTAL_API_KEY`, a long random `ADMIN_TOKEN`, and the treasury key (`TREASURY_KEYFILE` pointing at a Solana CLI keyfile is safer than pasting `TREASURY_SECRET_KEY`).
-5. Keep about 0.2 SOL in the prize wallet for network fees. With fees arriving in $CARDS and the pool in USDC, nothing tops SOL up for you, and payouts stall if it runs out.
+4. Fill in `.env`: `MODE=live`, `MINT`, `TOKEN_SYMBOL`, `QUOTE_MINT` (the $PUMP mint, if the coin is quoted in $PUMP), `RPC_URL`, `JUPITER_API_KEY`, `PUMPPORTAL_API_KEY`, a long random `ADMIN_TOKEN`, and the treasury key (`TREASURY_KEYFILE` pointing at a Solana CLI keyfile is safer than pasting `TREASURY_SECRET_KEY`).
+5. Keep about 0.2 SOL in the prize wallet for network fees. With fees arriving in $PUMP and the pool in USDC, nothing tops SOL up for you, and payouts stall if it runs out.
 6. **First round, small.** Set `MAX_HP_USD` low and `MIN_POT_USD` to about 60 so the first payout is small. Watch:
    ```bash
    curl localhost:8787/admin/status -H "x-admin-token: <token>"

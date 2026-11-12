@@ -11,7 +11,7 @@ import { MICRO } from './chain';
 const B58 = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
 export const fakeBase58 = (len: number) => Array.from(randomBytes(len), (b) => B58[b % 58]).join('');
 
-/** Base units per fee token (6 decimals, like $CARDS). */
+/** Base units per fee token (6 decimals, like $PUMP). */
 export const FEE_UNIT = 1_000_000;
 
 type Tx = { kind: StepKind; args: any; extra?: any; state: 'prepared' | 'landed' | 'failed'; out?: any };

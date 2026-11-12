@@ -15,7 +15,7 @@ export interface IncomingTrade {
   slot: number;
   wallet: string;
   side: Side;
-  /** Size of the trade in the coin's quote asset ($CARDS or SOL). */
+  /** Size of the trade in the coin's quote asset ($PUMP or SOL). */
   quote: number;
   tokens: number;
   ts: number;

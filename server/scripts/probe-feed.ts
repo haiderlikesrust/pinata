@@ -16,7 +16,7 @@ import { mapPortalTrade, PumpPortalFeed, type RawPortalTrade } from '../src/live
 loadEnv({ path: path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../.env') });
 
 const [mintArg, secondsArg] = process.argv.slice(2);
-// Set QUOTE_MINT in .env to check a coin that trades against $CARDS instead of SOL.
+// Set QUOTE_MINT in .env to check a coin that trades against $PUMP instead of SOL.
 const quoteMint = process.env.QUOTE_MINT?.trim() || undefined;
 if (!mintArg || !process.env.RPC_URL) {
   console.error('usage: npm run probe -- <mint> [seconds]   (RPC_URL must be set in .env)');

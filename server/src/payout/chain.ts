@@ -2,7 +2,7 @@
 // MemChain (demo mode + tests) and LiveChain (mainnet) both implement this.
 //
 // Money model: the prize pool is the USDC in the prize wallet. Creator fees
-// arrive in the coin's quote asset ($CARDS, or SOL) and are swapped into USDC
+// arrive in the coin's quote asset ($PUMP, or SOL) and are swapped into USDC
 // before each payout. USDC sent to the wallet by anyone counts too.
 
 export type StepKind = 'claim' | 'swapFees' | 'swapToken' | 'fundPack' | 'pack' | 'sweepPack' | 'sendUsdc' | 'sendToken';
