@@ -7,6 +7,11 @@ const BASE = 'https://api.jup.ag';
 export interface Order {
   transaction: string | null;
   requestId: string;
+  /** Which of Jupiter's engines built this: "metis" (aggregator), "jupiterz" (market makers), ... */
+  router?: string;
+  /** True when someone else pays the network fee, and therefore signs first. */
+  gasless?: boolean;
+  signatureFeePayer?: string | null;
   outAmount?: string;
   priceImpactPct?: string | number;
   priceImpact?: string | number;
@@ -22,9 +27,10 @@ export class Jupiter {
   }
 
   /** Quote + unsigned transaction. Without `taker` it is a quote only. */
-  async order(p: { inputMint: string; outputMint: string; amount: bigint; taker?: string; slippageBps: number }): Promise<Order> {
+  async order(p: { inputMint: string; outputMint: string; amount: bigint; taker?: string; slippageBps: number; excludeRouters?: string[] }): Promise<Order> {
     const q = new URLSearchParams({ inputMint: p.inputMint, outputMint: p.outputMint, amount: p.amount.toString(), slippageBps: String(p.slippageBps) });
     if (p.taker) q.set('taker', p.taker);
+    if (p.excludeRouters?.length) q.set('excludeRouters', p.excludeRouters.join(','));
     const res = await fetch(`${BASE}/swap/v2/order?${q}`, { headers: this.headers() });
     const body = (await res.json().catch(() => ({}))) as Order;
     if (!res.ok) throw new Error(`Jupiter order ${res.status}: ${body.errorMessage ?? body.error ?? 'unknown error'}`);

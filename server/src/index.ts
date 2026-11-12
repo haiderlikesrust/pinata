@@ -13,7 +13,12 @@ import { Leader } from './leader';
 import { Simulator } from './feed/simulator';
 import { MemChain } from './payout/memChain';
 
-const log = (msg: string) => console.log(`${new Date().toISOString().slice(11, 19)} ${msg}`);
+/** Set once the journal exists. Payout problems are copied there so they can be read at /api/handover. */
+let noteProblem: ((msg: string) => void) | null = null;
+const log = (msg: string) => {
+  console.log(`${new Date().toISOString().slice(11, 19)} ${msg}`);
+  if (msg.includes('needs attention')) noteProblem?.(msg);
+};
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 /**
@@ -159,6 +164,12 @@ if (fs.existsSync(path.join(cfg.staticDir, 'index.html'))) {
 const dbFile = cfg.dbPath.replace(/\.sqlite$/, cfg.mode === 'dry' ? '.dry.sqlite' : `.${cfg.mint!.replace(/[^A-Za-z0-9]/g, '').slice(0, 12)}.sqlite`);
 const leader = new Leader(path.join(path.dirname(dbFile), 'leader.lock'));
 leader.note('started', { pid: process.pid });
+noteProblem = (msg) => {
+  // Never let a secret reach the journal, even by way of an error message that quotes a URL.
+  let why = msg;
+  for (const secret of [cfg.rpcUrl, cfg.jupiterKey, cfg.pumpPortalKey, cfg.gachaApiKey, cfg.treasurySecret, cfg.adminToken]) if (secret) why = why.split(secret).join('[hidden]');
+  leader.note('payout problem', { why: why.slice(0, 500) });
+};
 
 await app.listen({ port: cfg.port, host: '0.0.0.0' });
 log(`listening on port ${cfg.port} (standby)`);

@@ -199,7 +199,7 @@ export async function runPayout(d: RunnerDeps, roundId: number): Promise<RoundSu
       if (!claimRow.skipped) summary.claimSig = db.step(k('claim'))?.sig ?? undefined;
     } catch (e) {
       if (!(e instanceof StepFailed)) throw e;
-      flag('creator fees could not be claimed this round; they stay in the vault for the next one');
+      flag(`creator fees could not be claimed this round; they stay in the vault for the next one (${e.message})`);
     }
 
     // 3. Turn every fee token in the wallet into USDC.
@@ -207,7 +207,7 @@ export async function runPayout(d: RunnerDeps, roundId: number): Promise<RoundSu
       await tx('swap-fees', 'swapFees', {});
     } catch (e) {
       if (!(e instanceof StepFailed)) throw e;
-      flag('fees could not be swapped to USDC this round; they stay in the wallet for the next one');
+      flag(`fees could not be swapped to USDC this round; they stay in the wallet for the next one (${e.message})`);
     }
 
     // 4. The pot is the USDC in the wallet, whoever sent it. Measured once, before anything is spent.

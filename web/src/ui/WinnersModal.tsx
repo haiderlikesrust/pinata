@@ -154,14 +154,20 @@ export function WinnersModal() {
   const live = st.mode === 'live';
   const paidOut = r.winners.reduce((a, w) => a + totalOf(w), 0);
 
+  // Nothing reached anyone: either the pool was empty or it could not be paid out.
+  const nothingSent = paidOut === 0 && r.status !== 'paying';
   const statusLine =
-    r.status === 'paid'
-      ? `All rewards sent, worth ${fmtUsd(paidOut, 2)} in total.`
-      : r.status === 'paying'
-        ? r.provisional
-          ? 'Confirming who still holds, then paying out…'
-          : 'Paying out now. This updates live.'
-        : 'Most rewards are out. A few transfers are being retried.';
+    r.status === 'paying'
+      ? r.provisional
+        ? 'Confirming who still holds, then paying out…'
+        : 'Paying out now. This updates live.'
+      : nothingSent
+        ? r.status === 'paid'
+          ? 'The prize pool was empty this round, so there was nothing to send.'
+          : 'This round’s pool could not be paid out. It stays in the prize wallet and rolls into the next piñata.'
+        : r.status === 'paid'
+          ? `All rewards sent, worth ${fmtUsd(paidOut, 2)} in total.`
+          : `${fmtUsd(paidOut, 2)} has been sent. Some rewards could not be sent and are being looked into.`;
 
   return (
     <div className="modal-wrap" onClick={() => set({ showWinners: false })}>
@@ -173,7 +179,9 @@ export function WinnersModal() {
         <p className="eyebrow">Round {r.round}</p>
         <h2>Smashed!</h2>
         <p className="potline">
-          {r.potUsd != null ? (
+          {nothingSent ? (
+            'No rewards went out this round'
+          ) : r.potUsd != null ? (
             <>
               <b>{fmtUsd(r.potUsd, 2)}</b> <span>USDC prize pool</span> rained down on {r.winners.length} {r.winners.length === 1 ? 'buyer' : 'buyers'}
             </>

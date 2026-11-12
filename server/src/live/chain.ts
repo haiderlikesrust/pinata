@@ -269,8 +269,21 @@ export class LiveChain implements Chain {
   /** A Jupiter swap from the treasury. `solSold` is how much SOL the swap itself is allowed to take. */
   private async swap(inputMint: string, outputMint: string, amount: bigint, solSold: bigint, label: string): Promise<Prepared> {
     const { jupiter, conn, treasury, slippageBps } = this.o;
-    const order = await jupiter.order({ inputMint, outputMint, amount, taker: this.me.toBase58(), slippageBps });
+    // The bot must know a transaction's ID before it is sent (that is what makes a payout safe to
+    // resume), and the ID is the fee payer's signature. Jupiter's market-maker route ("jupiterz")
+    // has the maker pay the fee and sign first, so it is excluded; the aggregator's price is within
+    // a fraction of a cent of it. If Jupiter still returns a route someone else pays for, that
+    // engine is excluded too and the order is asked for once more.
+    const me = this.me.toBase58();
+    const exclude = ['jupiterz'];
+    let order = await jupiter.order({ inputMint, outputMint, amount, taker: me, slippageBps, excludeRouters: exclude });
+    const sponsored = (o: typeof order) => o.gasless === true || (!!o.signatureFeePayer && o.signatureFeePayer !== me);
+    if (order.transaction && sponsored(order) && order.router && !exclude.includes(order.router)) {
+      exclude.push(order.router);
+      order = await jupiter.order({ inputMint, outputMint, amount, taker: me, slippageBps, excludeRouters: exclude });
+    }
     if (!order.transaction) throw new Error(`Jupiter returned no route for the ${label}: ${order.errorMessage ?? order.error ?? 'no transaction'}`);
+    if (sponsored(order)) throw new Error(`Jupiter only offered a ${label} route (${order.router ?? 'unknown'}) whose fee is paid by someone else, which the bot cannot track safely`);
     const tx = fromB64(order.transaction);
     tx.sign([treasury]);
     await assertSpend(conn, tx, this.me, solSold + MAX_SWAP_FEES, label);
