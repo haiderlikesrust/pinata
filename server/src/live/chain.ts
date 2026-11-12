@@ -45,6 +45,8 @@ export interface LiveOpts {
   gasFloatLamports: bigint;
   slippageBps: number;
   priorityMicroLamports: number;
+  /** Fees worth less than this (in micro-USDC) are left for a later round rather than claimed or swapped. */
+  minClaimUsdc: bigint;
   log: (m: string) => void;
 }
 
@@ -257,7 +259,7 @@ export class LiveChain implements Chain {
     switch (kind) {
       case 'claim': {
         const unclaimed = await this.unclaimed();
-        if (this.quoteToUsdc(unclaimed) < 500_000n) return null; // under about $0.50: not worth a transaction
+        if (this.quoteToUsdc(unclaimed) < this.o.minClaimUsdc) return null; // not worth a transaction yet
         const ixs: TransactionInstruction[] = [];
         const curve = await this.pump.fetchBondingCurve(mint).catch(() => null);
         // Fees first have to be swept out of the curve and the pool into the creator vaults.
@@ -277,7 +279,7 @@ export class LiveChain implements Chain {
       }
       case 'swapFees': {
         const held = await this.feesHeld();
-        if (this.quoteToUsdc(held) < 500_000n) return null; // dust
+        if (this.quoteToUsdc(held) < this.o.minClaimUsdc) return null; // dust
         this.estimateCache.at = 0;
         return this.swap(this.quote.toBase58(), USDC, held, this.quoteIsSol ? held : 0n, 'fee swap to USDC');
       }

@@ -224,6 +224,18 @@ describe('payout runner', () => {
     expect(chain.paid.usdc.size).toBe(5);
   });
 
+  it('still pays the USDC in the wallet when the fee swap fails', async () => {
+    setup(1000);
+    chain.usdc = 300_000_000n;
+    chain.hooks.onBroadcast = (kind) => (kind === 'swapFees' ? 'fail' : undefined);
+    const s = await run();
+    expect(s.status).toBe('attention'); // someone should look at why the swap failed
+    expect(s.potUsd).toBe(300);
+    expect(chain.paid.usdc.size).toBe(5);
+    expect(chain.usdc).toBe(0n);
+    expect(chain.fees).toBeGreaterThan(0n); // the fees are still there for next time
+  });
+
   it('does nothing when there is no pot', async () => {
     setup(0);
     const s = await run();

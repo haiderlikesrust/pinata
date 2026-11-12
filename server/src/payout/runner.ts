@@ -192,11 +192,23 @@ export async function runPayout(d: RunnerDeps, roundId: number): Promise<RoundSu
     const weights = winners.map((w) => w.weight);
 
     // 2. Claim creator fees.
-    const claimRow = await tx('claim', 'claim', {});
-    if (!claimRow.skipped) summary.claimSig = db.step(k('claim'))?.sig ?? undefined;
+    // A failed claim or fee swap must not hold up the payout: whatever USDC is already in the
+    // wallet is still paid, and the fees stay put for the next round.
+    try {
+      const claimRow = await tx('claim', 'claim', {});
+      if (!claimRow.skipped) summary.claimSig = db.step(k('claim'))?.sig ?? undefined;
+    } catch (e) {
+      if (!(e instanceof StepFailed)) throw e;
+      flag('creator fees could not be claimed this round; they stay in the vault for the next one');
+    }
 
     // 3. Turn every fee token in the wallet into USDC.
-    await tx('swap-fees', 'swapFees', {});
+    try {
+      await tx('swap-fees', 'swapFees', {});
+    } catch (e) {
+      if (!(e instanceof StepFailed)) throw e;
+      flag('fees could not be swapped to USDC this round; they stay in the wallet for the next one');
+    }
 
     // 4. The pot is the USDC in the wallet, whoever sent it. Measured once, before anything is spent.
     const pot = await memo('pot', async () => ({ usdc: await chain.potUsdc() }));

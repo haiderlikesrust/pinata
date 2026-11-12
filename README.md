@@ -90,6 +90,26 @@ A break is only declared once the breaking trade is finalized on chain. Packs ar
    ```
 7. Buy one $25 pack by hand on Collector Crypt first, and confirm with their support that automated buying to a different recipient wallet is fine for your volume.
 
+### A small test run with real money
+
+To see a full round (break, claim, swap, pack, payout) for a few dollars, launch a throwaway coin from the prize wallet and use these settings:
+
+```
+MODE=live
+MINT=<the test coin>
+MAX_HP_USD=10
+MIN_BUY_USD=2
+MIN_POT_USD=1
+MIN_CLAIM_USD=0.01
+```
+
+- **Deploy first, then buy.** Trades made before the server starts watching the coin are not counted.
+- **Buy from other wallets.** Buys from the prize wallet itself are ignored, and each wallet can win only one slot.
+- **Make each buy about $3.** Three take HP to 1, the fourth breaks it. A sell heals half its size.
+- **Seed the pool.** Fees from a few small buys are worth cents. Send USDC to the prize wallet and it counts as the pool: $100 buys one $25 pack, $20 tests everything except the pack.
+- **Watch it** at `/admin/status` and in the container log, then check each `tx` link on the winners screen.
+- **Afterwards** put the real values back, and change `MINT` to the real coin. The piñata that is already open keeps the HP it started with; new settings apply from the next one.
+
 ### Deploying
 
 One Docker image serves the site and runs the bot. [docs/DOKPLOY.md](docs/DOKPLOY.md) sets it up on Dokploy with zero-downtime updates.

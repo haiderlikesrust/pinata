@@ -93,6 +93,7 @@ export async function startLive(o: { cfg: Config; db: Db; pre: LivePre; broadcas
     gasFloatLamports: cfg.gasFloatLamports,
     slippageBps: cfg.slippageBps,
     priorityMicroLamports: cfg.priorityMicroLamports,
+    minClaimUsdc: BigInt(Math.round(cfg.minClaimUsd * 1_000_000)),
     log,
   });
   await chain.init();

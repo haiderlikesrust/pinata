@@ -60,6 +60,7 @@ const schema = z.object({
   COLLECTOR_CRYPT_PAYMENT_WALLET: z.string().default('GachaNgyXTU3zFogQ8Z5jR2BLXs8215X2AtEH18VxJq3'),
   PRIORITY_MICROLAMPORTS: num(100000),
   LEDGER_POLL_MS: num(2500),
+  MIN_CLAIM_USD: num(0.5),
 
   SIM_QUOTE_USD: num(0.0034),
   SIM_START_POT_USD: num(400),
@@ -119,6 +120,7 @@ export function parseConfig(env: Record<string, string | undefined> = process.en
     gachaPaymentWallet: e.COLLECTOR_CRYPT_PAYMENT_WALLET,
     priorityMicroLamports: e.PRIORITY_MICROLAMPORTS,
     ledgerPollMs: e.LEDGER_POLL_MS,
+    minClaimUsd: e.MIN_CLAIM_USD,
     sim: { quoteUsd: e.SIM_QUOTE_USD, startPotUsd: e.SIM_START_POT_USD, feeRate: e.SIM_FEE_RATE, tradesPerMin: e.SIM_TRADES_PER_MIN },
   };
 
