@@ -13,9 +13,43 @@ import { Leader } from './leader';
 import { Simulator } from './feed/simulator';
 import { MemChain } from './payout/memChain';
 
-const cfg = parseConfig();
 const log = (msg: string) => console.log(`${new Date().toISOString().slice(11, 19)} ${msg}`);
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * A server that cannot start says why in the hand-over journal on the shared
+ * volume, so the reason shows up at /api/handover on the version still running.
+ * Then it exits before ever answering a health check, and the update is rolled back.
+ */
+function cannotStart(why: string): never {
+  console.error(`\nCANNOT START: ${why}\n`);
+  try {
+    const dataDir = path.dirname(process.env.DB_PATH?.trim() || path.join(process.cwd(), 'data', 'pinata.sqlite'));
+    new Leader(path.join(dataDir, 'leader.lock')).note('failed to start', { why });
+  } catch {
+    /* the journal is only a diagnostic */
+  }
+  process.exit(1);
+}
+
+let cfg: ReturnType<typeof parseConfig>;
+try {
+  cfg = parseConfig();
+} catch (e) {
+  const issues = (e as { issues?: { path: (string | number)[]; message: string }[] }).issues;
+  cannotStart(issues ? `bad setting ${issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('; ')}` : (e as Error).message);
+}
+
+// Live settings (wallet key, RPC, mint, Jupiter) are proven to work before this server is allowed to take over.
+let livePre: import('./live/index').LivePre | null = null;
+if (cfg.mode === 'live') {
+  const { preflightLive, SettingsError } = await import('./live/index');
+  try {
+    livePre = await preflightLive(cfg, log);
+  } catch (e) {
+    cannotStart(e instanceof SettingsError ? e.message : 'the live settings check failed unexpectedly; see the container log');
+  }
+}
 
 // The server answers HTTP straight away, but only runs the game once it owns
 // the lock. That is what lets an update start the new version before the old
@@ -178,7 +212,7 @@ if (got && state === 'standby') {
       log('active · DEMO MODE: simulated trades, nothing touches the chain');
     } else {
       const { startLive } = await import('./live/index');
-      const live = await startLive({ cfg, db, broadcast, log });
+      const live = await startLive({ cfg, db, pre: livePre!, broadcast, log });
       stopLive = live.stop;
       game = live.game;
       log(`active · LIVE: watching ${cfg.mint}`);
