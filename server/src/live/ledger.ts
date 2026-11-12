@@ -98,12 +98,57 @@ export class Ledger {
     this.watch = [mint, bondingCurvePda(mint), canonicalPumpPoolPda(mint, quoteMint)];
   }
 
+  /** Addresses whose activity means "a trade may just have happened". */
+  get watched(): PublicKey[] {
+    return this.watch;
+  }
+
+  private nudges = 0;
+  private wake: (() => void) | null = null;
+  private subs: number[] = [];
+  private heard = false;
+
   start() {
     this.running = true;
     void this.loop();
+    // The RPC's websocket tells us the moment a transaction touches the coin, so the
+    // ledger is read straight away instead of on the next timer tick. If the websocket
+    // is unavailable the timer below still catches everything, just a little later.
+    try {
+      this.subs = this.watch.map((address) =>
+        this.conn.onLogs(
+          address,
+          (logs) => {
+            if (logs.err) return;
+            if (!this.heard) {
+              this.heard = true;
+              this.log('live trade stream is working: hits now appear within about a second');
+            }
+            this.nudge();
+          },
+          'confirmed',
+        ),
+      );
+    } catch (e) {
+      this.log(`could not open the live trade stream, falling back to polling: ${(e as Error).message}`);
+    }
   }
+
   stop() {
     this.running = false;
+    for (const id of this.subs) void this.conn.removeOnLogsListener(id).catch(() => {});
+    this.subs = [];
+    this.wake?.();
+  }
+
+  /**
+   * Reads the ledger now. Asked for twice per notification: once at once, and once
+   * a moment later in case the node answering the read is a beat behind the one
+   * that sent the notification.
+   */
+  nudge() {
+    this.nudges = 2;
+    this.wake?.();
   }
 
   private async loop() {
@@ -113,7 +158,23 @@ export class Ledger {
       } catch (e) {
         this.log(`ledger poll failed: ${(e as Error).message}`);
       }
-      await sleep(this.pollMs);
+      if (this.nudges > 0) {
+        this.nudges--;
+        await sleep(this.nudges > 0 ? 150 : 500); // 150ms also lets a burst of trades be read in one go
+        continue;
+      }
+      await new Promise<void>((resolve) => {
+        const timer = setTimeout(resolve, this.pollMs);
+        this.wake = () => {
+          clearTimeout(timer);
+          resolve();
+        };
+      });
+      this.wake = null;
+      if (this.nudges > 0) {
+        this.nudges--;
+        await sleep(150);
+      }
     }
   }
 

@@ -109,3 +109,38 @@ describe('mapPortalTrade', () => {
     expect(mapPortalTrade({ message: 'Successfully subscribed' } as never, mint)).toBeNull();
   });
 });
+
+describe('Ledger live stream', () => {
+  it('reads a trade within a second of the websocket notification, not on the next timer tick', async () => {
+    const { Ledger } = await import('../src/live/ledger');
+    const { Db } = await import('../src/db');
+    const listeners: ((l: { err: unknown; signature: string }) => void)[] = [];
+    let sigs: { signature: string; slot: number; err: null }[] = [{ signature: 'old', slot: 1, err: null }];
+    const buy = tx({ keys: [user, venue], preSol: [5, 10], postSol: [3.97, 12], pre: [bal(venue, mint, 1000)], post: [bal(venue, mint, 400), bal(user, mint, 600)] });
+    const conn = {
+      onLogs: (_a: unknown, cb: (l: { err: unknown; signature: string }) => void) => listeners.push(cb),
+      removeOnLogsListener: async () => {},
+      // newest first, stopping at the cursor, like the real RPC
+      getSignaturesForAddress: async (_a: unknown, o: { until?: string; limit?: number }) => {
+        const i = o.until ? sigs.findIndex((s) => s.signature === o.until) : -1;
+        return (i < 0 ? sigs : sigs.slice(0, i)).slice(0, o.limit ?? 1000);
+      },
+      getParsedTransaction: async () => buy,
+    };
+    const seen: { sig: string; at: number }[] = [];
+    const ledger = new Ledger(conn as never, MINT, new Db(':memory:'), (t) => seen.push({ sig: t.sig, at: Date.now() }), () => {}, 60_000);
+    ledger.start();
+    await new Promise((r) => setTimeout(r, 80)); // first pass only records where "now" is
+    expect(seen).toEqual([]);
+    expect(listeners.length).toBe(3); // the mint, its bonding curve and its pool
+
+    sigs = [{ signature: 'new-trade', slot: 2, err: null }, ...sigs];
+    const notified = Date.now();
+    listeners[0]!({ err: null, signature: 'new-trade' });
+    await new Promise((r) => setTimeout(r, 900));
+    ledger.stop();
+
+    expect(seen.map((s) => s.sig)).toEqual(['new-trade']); // once, even though three addresses report it
+    expect(seen[0]!.at - notified).toBeLessThan(700);
+  });
+});

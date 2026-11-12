@@ -57,7 +57,7 @@ All of these are settings in `.env` (see `.env.example`).
 - `server/src/engine` — the rules as pure functions (HP, winners, pot split, pack tiers).
 - `server/src/game.ts` — turns trades into HP, decides the break, starts payouts and rounds.
 - `server/src/payout/runner.ts` — the payout pipeline. Every transaction is saved, signed, **before** it is sent, and every result is saved once it lands. Re-running a round resumes where it stopped and never pays twice. The tests crash it at every step to prove that.
-- `server/src/live` — mainnet: the RPC trade ledger (source of truth), PumpPortal websocket (instant animation only), pump.fun fee claim, Jupiter swaps, transfers, Collector Crypt packs.
+- `server/src/live` — mainnet: the RPC trade ledger (source of truth, woken by the RPC's websocket so hits show within about a second), an optional PumpPortal feed, pump.fun fee claim, Jupiter swaps, transfers, Collector Crypt packs.
 - `server/src/leader.ts` — the lock that lets an update start the new server before the old one stops ([docs/DOKPLOY.md](docs/DOKPLOY.md)).
 - `web/src/scene` — the 3D scene. `director.ts` owns all motion; trades in, swings and explosions out.
 
@@ -68,12 +68,16 @@ A break is only declared once the breaking trade is finalized on chain. Packs ar
 **What has and has not been tested.** The rules, payout pipeline, trade parser and the whole site are tested and were run end to end in demo mode. The trade parser was also checked against real mainnet transactions, and Collector Crypt's public machine list was read live. **The fee claim, Jupiter swaps, token transfers and pack purchases have never been run on mainnet**: they are written against the current SDKs and docs and they type-check, but the first real round is their first real test. Treat it that way.
 
 1. **Launch the coin from a fresh wallet** that holds nothing but creator fees. Keep your own allocation somewhere else. If this key leaks, future fees are likely gone for good.
-2. Get an RPC URL (Helius, Triton, QuickNode), a Jupiter API key, and a PumpPortal API key (its linked wallet needs 0.02 SOL; trades cost 0.01 SOL per 10,000 messages).
+2. Get a paid RPC URL (Helius, Triton, QuickNode) and a Jupiter API key. That is all the trade feed needs: the RPC's own websocket reports each trade as it lands. A PumpPortal key is optional and not recommended to start with.
 3. Check the feeds against any existing graduated pump.fun coin. It spends nothing:
    ```bash
    npm run probe -- <mint> 60
    ```
-   Compare a few of the printed trades with Solscan. If PumpPortal prints "unmapped" messages, the site still works; hits just appear a few seconds late, from the RPC ledger.
+   Compare a few of the printed trades with Solscan. Then check how fast your RPC reports them:
+   ```bash
+   npm run probe:latency -w server -- <mint> 30
+   ```
+   It should print trades picked up about a second after their block. If nothing arrives on a busy coin, the RPC plan may not include websocket subscriptions; the site still works, with hits a few seconds late.
 4. Fill in `.env`: `MODE=live`, `MINT`, `TOKEN_SYMBOL`, `QUOTE_MINT` (the $CARDS mint, if the coin is quoted in $CARDS), `RPC_URL`, `JUPITER_API_KEY`, `PUMPPORTAL_API_KEY`, a long random `ADMIN_TOKEN`, and the treasury key (`TREASURY_KEYFILE` pointing at a Solana CLI keyfile is safer than pasting `TREASURY_SECRET_KEY`).
 5. Keep about 0.2 SOL in the prize wallet for network fees. With fees arriving in $CARDS and the pool in USDC, nothing tops SOL up for you, and payouts stall if it runs out.
 6. **First round, small.** Set `MAX_HP_USD` low and `MIN_POT_USD` to about 60 so the first payout is small. Watch:
